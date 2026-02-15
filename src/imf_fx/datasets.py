@@ -22,6 +22,8 @@ def monthly_usd_only(
     end: Optional[str] = None,
     limit_countries: Optional[int] = None,
     *,
+    include_country_name: bool = True,
+    categorical_dims: bool = True,
     return_meta: bool = False,
     debug: bool = False,
     timeout: int = 90,
@@ -148,7 +150,12 @@ def monthly_usd_only(
             print(f"[imf-fx] raw TIME_PERIOD coverage: {min_period} → {max_period}")
         print("[imf-fx] transforming to normalized schema...")
 
-    df_final = finalize_usd_only(df_raw, area_lu=area_lu)
+    df_final = finalize_usd_only(
+        df_raw,
+        area_lu=area_lu,
+        include_country_name=include_country_name,
+        categorical_dims=categorical_dims,
+    )
     elapsed = perf_counter() - t0
 
     out_meta = {
