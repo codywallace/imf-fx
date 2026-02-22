@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import polars as pl
 
 from .exceptions import SdmxParseError
@@ -16,12 +16,22 @@ def _code(v: Any) -> Any:
     return v
 
 
-def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
+def sdmx3_to_tidy(
+    j: Dict[str, Any],
+    *,
+    min_period: Optional[str] = None,
+    max_period: Optional[str] = None,
+    debug: bool = False,
+) -> pl.DataFrame:
     """
     Convert IMF SDMX 3.0 JSON response into a tidy Polars DataFrame with columns:
       - series dimensions (e.g. COUNTRY, INDICATOR, ...)
       - TIME_PERIOD
       - OBS_VALUE
+
+    Optional:
+      min_period / max_period filter observations by TIME_PERIOD lexicographically.
+      Works for IMF monthly formats like 'YYYY-M01'.
     """
     try:
         data = j["data"]
@@ -54,13 +64,22 @@ def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
             print("No series in ds0. ds0 keys:", list(ds0.keys()))
         return pl.DataFrame()
 
-    out_rows: List[Dict[str, Any]] = []
+    # ---- output columns (lists) ----
+    # One list per series dimension, plus TIME_PERIOD and OBS_VALUE.
+    cols: Dict[str, List[Any]] = {sid: [] for sid in series_ids}
+    time_col: List[Any] = []
+    obs_col: List[Any] = []
 
     # localize for speed
     tv = time_values
     sv = series_vals_per_dim
     sids = series_ids
-    out_append = out_rows.append
+    mn = min_period
+    mx = max_period
+
+    cols_append = {k: v.append for k, v in cols.items()}
+    time_append = time_col.append
+    obs_append = obs_col.append
 
     for skey, sobj in series_block.items():
         try:
@@ -71,8 +90,8 @@ def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
         if len(idx) != len(sids):
             continue
 
-        # Build base row once per series
-        base: Dict[str, Any] = {}
+        # decode this series' dimension values once
+        decoded_vals: List[Any] = []
         bad = False
         for pos, dim_id in enumerate(sids):
             codes_list = sv[pos]
@@ -80,7 +99,7 @@ def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
             if i < 0 or i >= len(codes_list):
                 bad = True
                 break
-            base[dim_id] = _code(codes_list[i])
+            decoded_vals.append(_code(codes_list[i]))
         if bad:
             continue
 
@@ -88,6 +107,7 @@ def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
         if not isinstance(observations, dict) or not observations:
             continue
 
+        # Now iterate observations; only append when inside window
         for tpos_str, obs_payload in observations.items():
             try:
                 tpos = int(tpos_str)
@@ -95,20 +115,33 @@ def sdmx3_to_tidy(j: Dict[str, Any], debug: bool = False) -> pl.DataFrame:
                 continue
 
             tp = tv[tpos] if 0 <= tpos < len(tv) else None
+            if tp is None:
+                continue
+
+            if mn and tp < mn:
+                continue
+            if mx and tp > mx:
+                continue
 
             val = None
             if isinstance(obs_payload, list) and obs_payload:
                 val = obs_payload[0]
 
-            row = base.copy()
-            row["TIME_PERIOD"] = tp
-            row["OBS_VALUE"] = val
-            out_append(row)
+            # append decoded series dims
+            for dim_id, dim_val in zip(sids, decoded_vals):
+                cols_append[dim_id](dim_val)
 
-    if not out_rows:
+            time_append(tp)
+            obs_append(val)
+
+    if not time_col:
         return pl.DataFrame()
 
-    df = pl.from_dicts(out_rows)
+    data_out: Dict[str, List[Any]] = {**cols, "TIME_PERIOD": time_col, "OBS_VALUE": obs_col}
+    df = pl.DataFrame(data_out)
+
+    # OBS_VALUE cast
     if "OBS_VALUE" in df.columns and df.height:
         df = df.with_columns(pl.col("OBS_VALUE").cast(pl.Float64, strict=False))
+
     return df

@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import polars as pl
 
 from .structure import get_dataflow_structure, codelist_to_df
-from .client import fetch_country_usd_series
+from .client import fetch_countries_usd_series
 from .transform import finalize_usd_only
 
 
@@ -19,6 +19,12 @@ def _is_iso3_like(code: object) -> bool:
     For the default dataset helper, we only want ISO3-like alpha codes (AAA).
     """
     return isinstance(code, str) and len(code) == 3 and code.isalpha()
+
+
+def _chunked(seq: list[str], size: int) -> list[list[str]]:
+    if size <= 0:
+        raise ValueError("chunk size must be > 0")
+    return [seq[i : i + size] for i in range(0, len(seq), size)]
 
 
 def _default_cache_path() -> Path:
@@ -56,6 +62,54 @@ def _write_cached_structure(cache_path: Path, struct: dict, debug: bool) -> None
             print(f"[imf-fx] structure cache write failed ({type(e).__name__}: {e}); continuing...")
 
 
+def _fetch_batch_resilient(
+    batch: list[str],
+    *,
+    start: Optional[str],
+    end: Optional[str],
+    timeout: int,
+    debug: bool,
+    max_splits: int = 6,
+) -> tuple[pl.DataFrame, int]:
+    """
+    Try fetching a batch. If it fails, split into smaller batches and retry.
+
+    Returns: (df, failures)
+      - df: concatenated results (may be empty)
+      - failures: number of leaf batches that still failed after splitting
+
+    max_splits controls recursion depth:
+      0 => no splitting (single attempt)
+      6 => at most 2^6 = 64 leaves (worst case)
+    """
+    try:
+        df = fetch_countries_usd_series(batch, start=start, end=end, timeout=timeout)
+        return df, 0
+    except Exception as e:
+        if debug:
+            print(f"[imf-fx] batch ERROR ({len(batch)}): {type(e).__name__}: {e}")
+
+        if max_splits <= 0 or len(batch) <= 1:
+            # Give up on this leaf
+            return pl.DataFrame(), 1
+
+        mid = len(batch) // 2
+        left = batch[:mid]
+        right = batch[mid:]
+
+        df_l, fail_l = _fetch_batch_resilient(
+            left, start=start, end=end, timeout=timeout, debug=debug, max_splits=max_splits - 1
+        )
+        df_r, fail_r = _fetch_batch_resilient(
+            right, start=start, end=end, timeout=timeout, debug=debug, max_splits=max_splits - 1
+        )
+
+        dfs = [d for d in (df_l, df_r) if getattr(d, "height", 0) > 0]
+        if dfs:
+            return pl.concat(dfs, how="vertical"), (fail_l + fail_r)
+        return pl.DataFrame(), (fail_l + fail_r)
+
+
 def monthly_usd_only(
     start: Optional[str] = None,
     end: Optional[str] = None,
@@ -66,13 +120,16 @@ def monthly_usd_only(
     return_meta: bool = False,
     debug: bool = False,
     timeout: int = 90,
-    # NEW:
-    parallel: bool = True,
-    max_workers: int = 16,
-    # Structure cache (NEW):
+    # Structure cache:
     cache_structure: bool = True,
     structure_cache_path: Optional[str] = None,
     structure_cache_ttl_seconds: int = 24 * 60 * 60,
+    # Batch fetch:
+    batch_size: int = 25,
+    batch_parallel: bool = True,
+    batch_max_workers: int = 3,
+    # Resilience:
+    batch_max_splits: int = 6,
 ) -> Union[pl.DataFrame, tuple[pl.DataFrame, dict]]:
     """
     Fetch IMF ER USD-only monthly exchange rates (domestic per USD) for published countries,
@@ -88,15 +145,19 @@ def monthly_usd_only(
 
     start/end: optional IMF SDMX period strings like '1957-M01', '2026-M02'
 
-    Performance options:
-    - parallel=True uses a thread pool to fetch multiple countries concurrently (I/O-bound).
-      Default max_workers=8 is polite to IMF and still much faster than sequential.
-    - cache_structure=True caches the ER structure response (~24h) in ~/.cache/imf_fx/er_structure.json
+    Performance strategy:
+    - Uses batched SDMX keys (COUNTRY joined by '+') to reduce HTTP calls dramatically.
+      Example key: USA+JPN+GBR.XDC_USD.PA_RT.M
+    - Optionally fetches batches in parallel (few workers; big requests).
+
+    Resilience:
+    - If a batch request fails, it is split into smaller batches and retried (binary split).
+      `batch_max_splits` limits recursion depth.
 
     Notes:
-    - Filters the IMF codelist to ISO3-like codes (A–Z, length 3), excluding special codes
+    - Filters the IMF country codelist to ISO3-like codes (A–Z, length 3), excluding special codes
       that often return empty series.
-    - `timeout` is included for future pass-through; fetch_country_usd_series currently uses its own timeout.
+    - IMF endpoint may ignore start/end server-side; client enforces time window at parse-time.
     """
     t0 = perf_counter()
 
@@ -104,13 +165,12 @@ def monthly_usd_only(
         print("[imf-fx] fetching structure for ER (to discover countries)...")
 
     # ---- structure fetch with caching ----
-    struct = None
+    struct: Optional[dict] = None
     cache_hit = False
 
     if cache_structure:
         cache_path = Path(structure_cache_path) if structure_cache_path else _default_cache_path()
         struct, cache_hit = _load_cached_structure(cache_path, structure_cache_ttl_seconds, debug=debug)
-
         if cache_hit and debug:
             print(f"[imf-fx] structure cache hit: {cache_path}")
 
@@ -149,84 +209,78 @@ def monthly_usd_only(
         else:
             print("[imf-fx] fetching monthly USD series for all available history...")
 
-        if parallel:
-            print(f"[imf-fx] parallel fetch enabled: max_workers={max_workers}")
-
     errors = 0
     dfs: list[pl.DataFrame] = []
-    countries_with_data = 0
     rows_raw_total = 0
 
-    # --- fetch helpers ---
-    def _fetch_one(code: str) -> tuple[str, pl.DataFrame]:
-        raw = fetch_country_usd_series(code, start=start, end=end, timeout=timeout)
-        return code, raw
+    # ---- batched fetch ----
+    batches = _chunked(countries, batch_size)
 
-    if not parallel:
-        # Sequential (your original behavior)
-        for i, c in enumerate(countries, start=1):
+    if debug:
+        print(f"[imf-fx] batch fetch: {len(batches)} batches (batch_size={batch_size})")
+        if batch_parallel:
+            print(f"[imf-fx] batch parallel enabled: batch_max_workers={batch_max_workers}")
+
+    def _fetch_batch(batch: list[str]) -> tuple[pl.DataFrame, int]:
+        return _fetch_batch_resilient(
+            batch,
+            start=start,
+            end=end,
+            timeout=timeout,
+            debug=debug,
+            max_splits=batch_max_splits,
+        )
+
+    if not batch_parallel:
+        for i, batch in enumerate(batches, start=1):
             if debug:
-                print(f"[imf-fx] ({i}/{len(countries)}) fetching {c} ...", end="", flush=True)
+                print(f"[imf-fx] (batch {i}/{len(batches)}) fetching {len(batch)} countries...")
+            raw, failures = _fetch_batch(batch)
+            errors += failures
 
-            try:
-                raw = fetch_country_usd_series(c, start=start, end=end, timeout=timeout)
-                n = int(raw.height) if hasattr(raw, "height") else 0
-                rows_raw_total += n
-
-                if n:
-                    dfs.append(raw)
-                    countries_with_data += 1
-                    if debug:
-                        print(f" ok ({n} rows)")
-                else:
-                    if debug:
-                        print(" ok (0 rows)")
-            except Exception as e:
-                errors += 1
-                if debug:
-                    print(f" ERROR: {type(e).__name__}: {e}")
-                # keep going
+            if raw.height:
+                dfs.append(raw)
+                rows_raw_total += int(raw.height)
 
     else:
-        # Parallel (I/O-bound)
-        # Note: debug logging from threads can get messy; we only print completion lines here.
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futs = {ex.submit(_fetch_one, c): c for c in countries}
-
+        with ThreadPoolExecutor(max_workers=batch_max_workers) as ex:
+            futs = {ex.submit(_fetch_batch, b): b for b in batches}
             done = 0
-            total = len(countries)
+            total = len(batches)
 
             for fut in as_completed(futs):
-                c = futs[fut]
                 done += 1
+                batch = futs[fut]
                 try:
-                    code, raw = fut.result()
+                    raw, failures = fut.result()
+                    errors += failures
+
                     n = int(raw.height) if hasattr(raw, "height") else 0
                     rows_raw_total += n
-
                     if n:
                         dfs.append(raw)
-                        countries_with_data += 1
 
                     if debug:
-                        # single-line progress, stable output
-                        print(f"[imf-fx] ({done}/{total}) fetched {code}: {n} rows")
-
+                        print(
+                            f"[imf-fx] ({done}/{total}) fetched batch({len(batch)}): {n} rows "
+                            f"(failures={failures})"
+                        )
                 except Exception as e:
                     errors += 1
                     if debug:
-                        print(f"[imf-fx] ({done}/{total}) ERROR {c}: {type(e).__name__}: {e}")
+                        print(f"[imf-fx] ({done}/{total}) ERROR batch({len(batch)}): {type(e).__name__}: {e}")
 
-    meta = {
+    meta_base = {
         "countries_requested": len(countries),
-        "countries_with_data": countries_with_data,
         "errors": errors,
         "start": start,
         "end": end,
         "rows_raw_total": rows_raw_total,
-        "parallel": parallel,
-        "max_workers": max_workers if parallel else 1,
         "structure_cache_hit": cache_hit,
+        "batch_size": batch_size,
+        "batch_parallel": batch_parallel,
+        "batch_max_workers": batch_max_workers if batch_parallel else 1,
+        "batch_max_splits": batch_max_splits,
     }
 
     if not dfs:
@@ -235,14 +289,21 @@ def monthly_usd_only(
             print(f"[imf-fx] finished: no data returned. errors={errors}. elapsed={elapsed:.2f}s")
 
         empty_df = pl.DataFrame()
-        out_meta = {**meta, "rows_final": 0, "elapsed_s": elapsed}
-
+        out_meta = {**meta_base, "countries_with_data": 0, "rows_final": 0, "elapsed_s": elapsed}
         return (empty_df, out_meta) if return_meta else empty_df
 
     if debug:
-        print(f"[imf-fx] concatenating {len(dfs)} country frames...")
+        print(f"[imf-fx] concatenating {len(dfs)} batch frames...")
 
     df_raw = pl.concat(dfs, how="vertical")
+
+    # countries_with_data derived from raw (unique COUNTRY)
+    countries_with_data = 0
+    if df_raw.height and "COUNTRY" in df_raw.columns:
+        try:
+            countries_with_data = df_raw.select(pl.col("COUNTRY").n_unique()).item()
+        except Exception:
+            countries_with_data = 0
 
     # Optional: report actual period coverage returned
     min_period = None
@@ -269,7 +330,8 @@ def monthly_usd_only(
     elapsed = perf_counter() - t0
 
     out_meta = {
-        **meta,
+        **meta_base,
+        "countries_with_data": countries_with_data,
         "rows_final": int(df_final.height),
         "elapsed_s": elapsed,
         "min_period": min_period,
