@@ -71,7 +71,7 @@ print(df.head())
 ```
 ---
 
-## Export to CSV
+## Bulk exports
 
 The dataset can be written directly to CSV, or export to Parquet for use in other systems
 
