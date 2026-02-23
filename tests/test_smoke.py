@@ -1,7 +1,8 @@
 # tests/test_smoke.py
 
 import polars as pl
-from imf_fx import monthly_usd_only, fetch_countries_usd_series  # type: ignore
+
+from imf_fx import fetch_countries_usd_series, monthly_usd_only  # type: ignore
 
 
 def test_monthly_usd_only_small_window():

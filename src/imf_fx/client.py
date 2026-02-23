@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, List
+from collections.abc import Sequence
+
 import polars as pl
 
 from .config import (
@@ -8,8 +9,8 @@ from .config import (
     DATAFLOW_AGENCY,
     DATAFLOW_ID,
     FREQUENCY,
-    TRANSFORMATION,
     INDICATOR,
+    TRANSFORMATION,
 )
 from .http import get_json_session
 from .sdmx import sdmx3_to_tidy
@@ -19,7 +20,7 @@ def _is_iso3_like(code: object) -> bool:
     return isinstance(code, str) and len(code) == 3 and code.isalpha()
 
 
-def _normalize_iso3_list(codes: Sequence[str]) -> List[str]:
+def _normalize_iso3_list(codes: Sequence[str]) -> list[str]:
     """
     Normalize ISO3-like codes:
     - strip + upper
@@ -50,8 +51,8 @@ def make_er_key(country_iso3: str) -> str:
 
 def get_data_key(
     key: str,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    start: str | None = None,
+    end: str | None = None,
     timeout: int = 90,
 ) -> dict:
     """
@@ -72,8 +73,8 @@ def get_data_key(
 
 def fetch_country_usd_series(
     country_iso3: str,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    start: str | None = None,
+    end: str | None = None,
     timeout: int = 120,
 ) -> pl.DataFrame:
     """
@@ -88,8 +89,8 @@ def fetch_country_usd_series(
 
 def fetch_countries_usd_series(
     countries_iso3: Sequence[str],
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    start: str | None = None,
+    end: str | None = None,
     timeout: int = 120,
     *,
     max_countries_per_request: int = 60,

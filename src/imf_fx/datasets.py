@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional, Union
-from time import perf_counter, time
-from pathlib import Path
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from time import perf_counter, time
 
 import polars as pl
 
-from .structure import get_dataflow_structure, codelist_to_df
 from .client import fetch_countries_usd_series
+from .structure import codelist_to_df, get_dataflow_structure
 from .transform import finalize_usd_only
 
 
@@ -33,7 +32,7 @@ def _default_cache_path() -> Path:
 
 def _load_cached_structure(
     cache_path: Path, ttl_seconds: int, debug: bool
-) -> tuple[Optional[dict], bool]:
+) -> tuple[dict | None, bool]:
     """
     Return (struct, hit) where hit=True if we used cache.
     """
@@ -67,8 +66,8 @@ def _write_cached_structure(cache_path: Path, struct: dict, debug: bool) -> None
 def _fetch_batch_resilient(
     batch: list[str],
     *,
-    start: Optional[str],
-    end: Optional[str],
+    start: str | None,
+    end: str | None,
     timeout: int,
     debug: bool,
     max_splits: int = 6,
@@ -113,9 +112,9 @@ def _fetch_batch_resilient(
 
 
 def monthly_usd_only(
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-    limit_countries: Optional[int] = None,
+    start: str | None = None,
+    end: str | None = None,
+    limit_countries: int | None = None,
     *,
     include_country_name: bool = True,
     categorical_dims: bool = True,
@@ -124,7 +123,7 @@ def monthly_usd_only(
     timeout: int = 90,
     # Structure cache:
     cache_structure: bool = True,
-    structure_cache_path: Optional[str] = None,
+    structure_cache_path: str | None = None,
     structure_cache_ttl_seconds: int = 24 * 60 * 60,
     # Batch fetch:
     batch_size: int = 25,
@@ -132,7 +131,7 @@ def monthly_usd_only(
     batch_max_workers: int = 3,
     # Resilience:
     batch_max_splits: int = 6,
-) -> Union[pl.DataFrame, tuple[pl.DataFrame, dict]]:
+) -> pl.DataFrame | tuple[pl.DataFrame, dict]:
     """
     Fetch IMF ER USD-only monthly exchange rates (domestic per USD) for published countries,
     transform to a normalized table.
@@ -167,7 +166,7 @@ def monthly_usd_only(
         print("[imf-fx] fetching structure for ER (to discover countries)...")
 
     # ---- structure fetch with caching ----
-    struct: Optional[dict] = None
+    struct: dict | None = None
     cache_hit = False
 
     if cache_structure:

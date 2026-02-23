@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import polars as pl
 
 from .exceptions import SdmxParseError
@@ -20,10 +21,10 @@ def _code(v: Any) -> Any:
 
 
 def sdmx3_to_tidy(
-    j: Dict[str, Any],
+    j: dict[str, Any],
     *,
-    min_period: Optional[str] = None,
-    max_period: Optional[str] = None,
+    min_period: str | None = None,
+    max_period: str | None = None,
     debug: bool = False,
 ) -> pl.DataFrame:
     """
@@ -69,9 +70,9 @@ def sdmx3_to_tidy(
 
     # ---- output columns (lists) ----
     # One list per series dimension, plus TIME_PERIOD and OBS_VALUE.
-    cols: Dict[str, List[Any]] = {sid: [] for sid in series_ids}
-    time_col: List[Any] = []
-    obs_col: List[Any] = []
+    cols: dict[str, list[Any]] = {sid: [] for sid in series_ids}
+    time_col: list[Any] = []
+    obs_col: list[Any] = []
 
     # localize for speed
     tv = time_values
@@ -94,7 +95,7 @@ def sdmx3_to_tidy(
             continue
 
         # decode this series' dimension values once
-        decoded_vals: List[Any] = []
+        decoded_vals: list[Any] = []
         bad = False
         for pos, dim_id in enumerate(sids):
             codes_list = sv[pos]
@@ -140,7 +141,7 @@ def sdmx3_to_tidy(
     if not time_col:
         return pl.DataFrame()
 
-    data_out: Dict[str, List[Any]] = {**cols, "TIME_PERIOD": time_col, "OBS_VALUE": obs_col}
+    data_out: dict[str, list[Any]] = {**cols, "TIME_PERIOD": time_col, "OBS_VALUE": obs_col}
     df = pl.DataFrame(data_out)
 
     # OBS_VALUE cast

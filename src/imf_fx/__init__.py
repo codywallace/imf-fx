@@ -8,8 +8,8 @@ Only the functions imported below are considered part of the
 public, stable API.
 """
 
-from .datasets import monthly_usd_only
 from .client import fetch_countries_usd_series
+from .datasets import monthly_usd_only
 
 __all__ = [
     "monthly_usd_only",

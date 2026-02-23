@@ -2,24 +2,26 @@
 # Subject to change without notice.
 
 from __future__ import annotations
-from typing import Any, Dict
+
+from typing import Any
+
 import polars as pl
 
 from .config import BASE_URL, DATAFLOW_AGENCY, DATAFLOW_ID
-from .http import get_json_session
 from .exceptions import StructureNotFound
+from .http import get_json_session
 
 
 def get_dataflow_structure(
     dataflow_agency: str = DATAFLOW_AGENCY,
     dataflow_id: str = DATAFLOW_ID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     url = f"{BASE_URL}/structure/dataflow/{dataflow_agency}/{dataflow_id}/+"
     params = {"detail": "full", "references": "descendants"}
     return get_json_session(url, params=params, timeout=90)
 
 
-def codelist_to_df(struct: Dict[str, Any], cl_id: str) -> pl.DataFrame:
+def codelist_to_df(struct: dict[str, Any], cl_id: str) -> pl.DataFrame:
     try:
         codelists = struct["data"]["codelists"]
     except Exception as e:

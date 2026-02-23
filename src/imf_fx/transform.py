@@ -2,8 +2,10 @@
 # Subject to change without notice.
 
 from __future__ import annotations
+
 import polars as pl
 import pycountry
+
 from .lookups import iso2_to_currency
 
 

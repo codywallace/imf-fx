@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from functools import lru_cache
 from pathlib import Path
-import xml.etree.ElementTree as ET
+
 import requests
 
-from .config import CLDR_URL, CACHE_DIR
+from .config import CACHE_DIR, CLDR_URL
 
 CACHE_DIR_PATH = Path(CACHE_DIR)
 CACHE_DIR_PATH.mkdir(parents=True, exist_ok=True)

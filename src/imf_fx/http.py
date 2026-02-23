@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
 import threading
+from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -14,7 +15,7 @@ from .config import IMF_API_KEY
 _thread_local = threading.local()
 
 
-def imf_headers() -> Dict[str, str]:
+def imf_headers() -> dict[str, str]:
     if not IMF_API_KEY:
         return {"Accept": "application/json"}
     return {"Accept": "application/json", "X-API-KEY": IMF_API_KEY}
@@ -43,7 +44,7 @@ def _get_session() -> requests.Session:
     return s
 
 
-def get_json_session(url: str, params: Optional[dict] = None, timeout: int = 90) -> Dict[str, Any]:
+def get_json_session(url: str, params: dict | None = None, timeout: int = 90) -> dict[str, Any]:
     sess = _get_session()
     r = sess.get(url, params=params, headers=imf_headers(), timeout=timeout)
     r.raise_for_status()

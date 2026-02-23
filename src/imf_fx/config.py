@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 
 BASE_URL = "https://api.imf.org/external/SDMX/3.0"
