@@ -1,0 +1,51 @@
+name: release
+
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+
+jobs:
+    release:
+        name: Build and Publish
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                python-version: ["3.13"]
+
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up uv (and Python)
+              uses: astral-sh/setup-uv@v6
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - name: Sync dependencies (runtime + dev extra)
+              run: uv sync --extra dev
+
+            - name: Lint (ruff)
+              run: uv run ruff check .
+
+            - name: Format check (ruff)
+              run: uv run ruff format --check .
+
+            - name: Run tests
+              run: uv run pytest -q
+
+            - name: Build sdist and wheel (uv)
+              run: uv build --no-sources
+
+            - name: Show dist/
+              run: ls -l dist
+
+            - name: Publish to PyPI (uv)
+              env:
+                  UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+              run: uv publish

@@ -9,7 +9,9 @@ description = "High-performance Python client for IMF SDMX 3.0 exchange-rate dat
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
-authors = [{ name = "Cody Wallace", email = "codywallace.dev@gmail.com" }]
+authors = [
+  { name = "Cody Wallace", email = "codywallace.dev@gmail.com" }
+]
 
 keywords = [
   "imf",
@@ -33,12 +35,13 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3 :: Only",
   "Topic :: Office/Business :: Financial",
   "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 dependencies = [
@@ -62,6 +65,10 @@ Homepage = "https://github.com/codywallace/imf-fx"
 Repository = "https://github.com/codywallace/imf-fx"
 Issues = "https://github.com/codywallace/imf-fx/issues"
 
+# =============================
+# Setuptools configuration
+# =============================
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 include-package-data = true
@@ -69,46 +76,56 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# Ensure typing marker file is included if you ship one
 [tool.setuptools.package-data]
 imf_fx = ["py.typed"]
+
+# =============================
+# Pytest
+# =============================
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = ["-v"]
+
+# =============================
+# Ruff (lint + format)
+# =============================
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 exclude = [
   ".git",
-  ".venv",
-  "venv",
   "__pycache__",
   "build",
   "dist",
   "*.egg-info",
   ".pytest_cache",
-  ".cache",
+  ".ruff_cache",
+  ".mypy_cache",
 ]
 
 [tool.ruff.lint]
 select = [
   "E",   # pycodestyle errors
   "F",   # pyflakes
-  "I",   # import sorting
+  "I",   # isort
   "UP",  # pyupgrade
 ]
 ignore = [
-  "E501", # line length handled by formatter
+  "E501",  # line length handled by formatter
 ]
 fixable = ["ALL"]
-unfixable = []
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
+# =============================
+# MyPy
+# =============================
 
 [tool.mypy]
 python_version = "3.11"

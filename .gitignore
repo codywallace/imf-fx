@@ -5,6 +5,7 @@
 **/*.py[cod]
 *$py.class
 *.so
+*.pyc
 
 # ==========================
 # Distribution / packaging
