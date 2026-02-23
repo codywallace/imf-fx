@@ -1,35 +1,116 @@
+# ==========================
 # Python
+# ==========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 
-# Virtual environments
-.venv/
-venv/
+# C extensions
+*.so
 
-# Environment variables
-.env
-
-# OS
-.DS_Store
-
-# VS Code
-.vscode/
-
-# Logs
-*.log
-
-# Build artifacts
+# Distribution / packaging
+.Python
 build/
 dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 *.egg-info/
+*.egg
+MANIFEST
 
-# Docker volumes
-postgres_data/
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# systemd
-*.service
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+coverage.xml
 
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# ==========================
+# Virtual environments
+# ==========================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================
+# VS Code
+# ==========================
+.vscode/
+
+# ==========================
+# macOS
+# ==========================
+.DS_Store
+
+# ==========================
+# Linux
+# ==========================
+*.swp
+*.swo
+
+# ==========================
+# Logs
+# ==========================
+*.log
+
+# ==========================
 # Jupyter
+# ==========================
 .ipynb_checkpoints/
+
+# ==========================
+# Rust
+# ==========================
+target/
+Cargo.lock
+
+# ==========================
+# Hatch
+# ==========================
+.hatch/
+
+# ==========================
+# Maturin
+# ==========================
+maturin.log
+
+# ==========================
+# PyPI / Twine
+# ==========================
+.pypirc
+
+# ==========================
+# Local cache
+# ==========================
+.cache/
