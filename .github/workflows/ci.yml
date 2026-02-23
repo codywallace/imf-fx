@@ -36,7 +36,7 @@ jobs:
 
       - name: Format check (ruff)
         run: |
-          ruff format --check . 
+          ruff format --check .
 
       - name: Run tests
         run: |
@@ -44,6 +44,6 @@ jobs:
 
       - name: Build package (sanity)
         run: |
-          python -m pip install build -U build twine
+          python -m pip install -U build twine
           python -m build
           python -m twine check dist/*
