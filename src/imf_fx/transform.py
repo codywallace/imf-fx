@@ -51,7 +51,10 @@ def enrich_rates_usd_only(df: pl.DataFrame) -> pl.DataFrame:
 
     df = df.with_columns(
         [
-            pl.when(pl.col("rate_domestic_per_usd").is_not_null() & (pl.col("rate_domestic_per_usd") > 0))
+            pl.when(
+                pl.col("rate_domestic_per_usd").is_not_null()
+                & (pl.col("rate_domestic_per_usd") > 0)
+            )
             .then(1.0 / pl.col("rate_domestic_per_usd"))
             .otherwise(None)
             .alias("usd_per_domestic"),
@@ -88,9 +91,7 @@ def finalize_usd_only(
         df.pipe(add_imf_date_col)
         .pipe(add_against_currency)
         .pipe(enrich_rates_usd_only)
-        .with_columns(
-            pl.col("COUNTRY").cast(pl.Utf8, strict=False).alias("country_iso3")
-        )
+        .with_columns(pl.col("COUNTRY").cast(pl.Utf8, strict=False).alias("country_iso3"))
         .filter(pl.col("country_iso3").str.len_chars() == 3)
         .with_columns(
             pl.col("country_iso3")
@@ -121,10 +122,7 @@ def finalize_usd_only(
 
     if include_country_name:
         # (Optional) ensure join keys are consistent types
-        area_small = (
-            area_lu.select(["code", label_col])
-            .rename({label_col: "country_name"})
-        )
+        area_small = area_lu.select(["code", label_col]).rename({label_col: "country_name"})
         df = df.join(
             area_small,
             left_on="COUNTRY",

@@ -31,7 +31,9 @@ def _default_cache_path() -> Path:
     return Path.home() / ".cache" / "imf_fx" / "er_structure.json"
 
 
-def _load_cached_structure(cache_path: Path, ttl_seconds: int, debug: bool) -> tuple[Optional[dict], bool]:
+def _load_cached_structure(
+    cache_path: Path, ttl_seconds: int, debug: bool
+) -> tuple[Optional[dict], bool]:
     """
     Return (struct, hit) where hit=True if we used cache.
     """
@@ -170,14 +172,18 @@ def monthly_usd_only(
 
     if cache_structure:
         cache_path = Path(structure_cache_path) if structure_cache_path else _default_cache_path()
-        struct, cache_hit = _load_cached_structure(cache_path, structure_cache_ttl_seconds, debug=debug)
+        struct, cache_hit = _load_cached_structure(
+            cache_path, structure_cache_ttl_seconds, debug=debug
+        )
         if cache_hit and debug:
             print(f"[imf-fx] structure cache hit: {cache_path}")
 
     if struct is None:
         struct = get_dataflow_structure()
         if cache_structure:
-            cache_path = Path(structure_cache_path) if structure_cache_path else _default_cache_path()
+            cache_path = (
+                Path(structure_cache_path) if structure_cache_path else _default_cache_path()
+            )
             _write_cached_structure(cache_path, struct, debug=debug)
 
     area_lu = codelist_to_df(struct, "CL_ER_COUNTRY_PUB")
@@ -268,7 +274,9 @@ def monthly_usd_only(
                 except Exception as e:
                     errors += 1
                     if debug:
-                        print(f"[imf-fx] ({done}/{total}) ERROR batch({len(batch)}): {type(e).__name__}: {e}")
+                        print(
+                            f"[imf-fx] ({done}/{total}) ERROR batch({len(batch)}): {type(e).__name__}: {e}"
+                        )
 
     meta_base = {
         "countries_requested": len(countries),
