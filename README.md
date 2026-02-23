@@ -71,6 +71,22 @@ print(df.head())
 ```
 ---
 
+## Export to CSV
+
+The dataset can be written directly to CSV, or export to Parquet for use in other systems
+
+```Python
+from imf_fx import monthly_usd_only
+
+df = monthly_usd_only()
+
+df.write_csv("imf_monthly_usd.csv")
+df.write_parquet("imf_monthly_usd.parquet")
+
+```
+
+---
+
 Download a specific time-window
 
 ```Python
