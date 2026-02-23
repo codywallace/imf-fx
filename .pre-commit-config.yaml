@@ -1,18 +1,49 @@
 repos:
+  # ============================================================================
+  # Ruff - Linting + Formatting (replaces black/isort/flake8)
+  # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.8.4
     hooks:
-      # Lint (with autofix)
       - id: ruff
         args: [--fix]
-      # Formatter
       - id: ruff-format
 
-  # catch whitespace + newline issues
+  # ============================================================================
+  # Core file hygiene (includes Markdown support)
+  # ============================================================================
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
-      - id: end-of-file-fixer
+      # Fix trailing whitespace (handles Markdown properly)
       - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+
+      # Validate YAML
       - id: check-yaml
+        args: [--allow-multiple-documents]
+
+      # Validate TOML (pyproject.toml)
       - id: check-toml
+
+      # Validate JSON
+      - id: check-json
+
+      # Detect merge conflicts
+      - id: check-merge-conflict
+
+      # Prevent committing private keys
+      - id: detect-private-key
+
+      # Prevent large accidental files
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+        exclude: |
+          (?x)^(
+              .*\.parquet|
+              .*\.feather|
+              uv\.lock
+          )$
