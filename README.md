@@ -1,11 +1,14 @@
-# imf-fx
-
-High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a production-ready monthly USD dataset helper.
-
 ![CI](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml/badge.svg)
 ![PyPI](https://img.shields.io/pypi/v/imf-fx)
 ![Python](https://img.shields.io/pypi/pyversions/imf-fx)
 ![License](https://img.shields.io/pypi/l/imf-fx)
+
+
+---
+
+# imf-fx
+
+High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a production-ready monthly USD dataset helper.
 
 ---
 
