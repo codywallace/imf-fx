@@ -1,204 +1,187 @@
-imf-fx
+# imf-fx
 
-Lightweight Python utilities for fetching, parsing, and transforming IMF SDMX 3.0 exchange rate data.
+High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a monthly USD dataset helper.
 
-imf-fx makes it easy to:
+`imf-fx` provides reliable access to the IMF’s official exchange rate data using the SDMX 3.0 API contract. It is designed for financial modeling workflows, development finance systems, and public information management platforms that require consistent historical currency normalization.
 
-Fetch official IMF exchange rate data via SDMX 3.0
+---
 
-Convert SDMX JSON into tidy tabular form
+## Overview
 
-Generate clean monthly USD exchange rate datasets
+The International Monetary Fund (IMF) publishes official exchange rate data through its SDMX 3.0 API.
 
-Export results to CSV or Parquet
+`imf-fx` provides:
 
-Use exchange rates directly in analytics workflows
+- Direct integration with the official SDMX 3.0 exchange-rate endpoint
+- Batched country requests for efficient network usage
+- Fast parsing using Polars
+- Client-side time-window enforcement
+- ISO2 and ISO3 country compatibility
+- Log exchange rate output for modeling workflows
 
-The package focuses on monthly USD-only exchange rates (domestic currency per USD), which are widely used in:
+The package relies solely on the official IMF API contract, ensuring stability and alignment with IMF data structures. Some earlier community approaches relied on scraping spreadsheets or HTML representations of data. By using the official SDMX 3.0 endpoint directly, this package provides a more robust and production-ready integration path.
 
-Macroeconomic research
+---
 
-Development finance normalization
+## Why This Is Useful
 
-Aid and humanitarian reporting
+Exchange rate normalization is essential for:
 
-Cross-country financial comparison
+- Development finance analytics
+- Aid Information Management Systems (AIMS)
+- Development Finance Information Management Systems (DFIMS)
+- IATI data processing
+- OECD CRS normalization
+- Public financial management dashboards
+- Cross-country budget comparisons
+- Financial modeling pipelines
 
-Historical FX modeling
+Public finance and development systems frequently ingest transactions denominated in multiple currencies. Consistent historical FX normalization ensures:
 
-Installation
+- Accurate aggregation across currencies
+- Time-consistent financial comparisons
+- Reproducible modeling
+- Transparent auditability of conversions
+
+`imf-fx` provides a fast and structured way to obtain authoritative exchange rate data for these workflows.
+
+---
+
+## Installation
+
+```bash
 pip install imf-fx
+
+```
 
 Python 3.11 or newer is required.
 
-Optional: If you have an IMF API key:
+---
 
-export IMF_API_KEY="your_api_key_here"
-Quick Start
-Download monthly USD exchange rates
-from imf_fx.datasets import monthly_usd_only
+## Quick Start
 
-df, meta = monthly_usd_only(
-    start="2010-M01",
-    end="2024-M12"
-)
+Download the full monthly USD dataset
 
-print(meta)
+```Python
+from imf_fx import monthly_usd_only
+
+df = monthly_usd_only()
 print(df.head())
 
-This returns:
+```
+---
 
-A Polars DataFrame
+Download a specific time-window
 
-A metadata dictionary describing the fetch
+```Python
+from imf_fx import monthly_usd_only
 
-Output Schema
-
-The returned DataFrame includes:
-
-Column	Description
-date	Month-end date
-country_iso3	IMF country code (ISO3-like)
-country_iso2	ISO2 code (best effort)
-country_name	Country name from IMF codelist
-currency	Domestic ISO4217 currency (best effort via CLDR)
-against	Always "USD"
-rate_domestic_per_usd	Domestic currency per 1 USD
-usd_per_domestic	Inverse exchange rate
-log_rate	Natural log of rate
-source	"IMF"
-Real-World Usage Examples
-1. Export to CSV (Excel / BI workflows)
-df, meta = monthly_usd_only(
-    start="2000-M01",
-    end="2024-M12"
+df = monthly_usd_only(
+    start="2020-M01",
+    end="2020-M12"
 )
 
-df.write_csv("imf_fx_monthly_usd.csv")
+```
 
-Use this file in:
+---
 
-Excel
+Retreive dataset with metadata
 
-Power BI
+```Python
+from imf_fx import monthly_usd_only
 
-Tableau
+df, meta = monthly_usd_only(return_meta=True)
 
-2. Export to Parquet (analytics pipelines, etc.)
-df, meta = monthly_usd_only(
-    start="1990-M01",
-    end="2024-M12"
-)
+print(meta)
 
-df.write_parquet("imf_fx.parquet")
+```
 
-Parquet is ideal for:
+---
 
-Cloud analytics
+Example metadata output:
 
-DuckDB workflows
+```Python
+{
+  "countries_requested": 260,
+  "countries_with_data": 222,
+  "rows_final": 154333,
+  "min_period": "1924-M06",
+  "max_period": "2026-M01",
+  "elapsed_s": 2.7
+}
 
-Spark pipelines
+```
 
-Large-scale modeling
 
-3. Filter a specific country
-df, _ = monthly_usd_only(
-    start="2015-M01",
-    end="2024-M12"
-)
+## Output Schema
 
-kenya = df.filter(df["country_iso3"] == "KEN")
-print(kenya.tail())
-4. Convert to Pandas
+The normalized dataset includes
 
-If your workflow relies on Pandas:
+| Column                 | Description                   |
+| ---------------------- | ----------------------------- |
+| `country_iso3`         | ISO 3-letter country code     |
+| `country_iso2`         | ISO 2-letter country code     |
+| `country_name`         | Country name                  |
+| `date`                 | End-of-month date             |
+| `ym`                   | Year-month string (`YYYY-MM`) |
+| `usd_per_domestic`     | Domestic currency per 1 USD   |
+| `log_usd_per_domestic` | Natural log of exchange rate  |
 
-import pandas as pd
 
-df, _ = monthly_usd_only(
-    start="2015-M01",
-    end="2024-M12"
-)
+Both ISO2 and ISO3 codes are included to simplify integration with:
 
-pdf = df.to_pandas()
-print(pdf.head())
-5. Compute rolling averages
-df, _ = monthly_usd_only(
-    start="2010-M01",
-    end="2024-M12"
-)
+- IATI datasets
+- OECD CRS datasets
+- National aid platforms
+- Government finance systems
+- Custom financial tools and pipelines
 
-kenya = (
-    df
-    .filter(df["country_iso3"] == "KEN")
-    .sort("date")
-    .with_columns(
-        df["rate_domestic_per_usd"]
-        .rolling_mean(window_size=12)
-        .alias("rolling_12m_avg")
-    )
-)
+Users do not need to perform separate country code mapping.
 
-print(kenya.tail())
-6. Normalize historical financial data
+---
 
-Convert domestic currency to USD using the inverse rate:
+## Performance
 
-df, _ = monthly_usd_only(
-    start="2005-M01",
-    end="2024-M12"
-)
+The dataset helper uses:
 
-ethiopia = df.filter(df["country_iso3"] == "ETH")
+- Batched SDMX country keys (reducing HTTP calls)
+- Parallel batch fetching
+- Polars-based parsing for speed and memory efficiency
+- Columnar construction rather than row-by-row dictionary assembly
 
-# Example: Convert 1000 ETB in 2010 to USD
-rate_row = ethiopia.filter(df["date"].dt.year() == 2010).head(1)
-usd_value = 1000 * rate_row["usd_per_domestic"][0]
+Typical performance:
 
-print("USD value:", usd_value)
-Advanced Usage
+- Full historical dataset (1924–present)
+- 150k rows
+- ~2–3 seconds on a standard machine
 
-You can access lower-level components if needed:
+Time-windowed requests are significantly faster.
 
-imf_fx.client — fetch individual country series
+---
 
-imf_fx.sdmx — convert SDMX JSON to tidy data
+## Minimal Dependencies
 
-imf_fx.transform — apply exchange rate transformations
+External dependencies are intentionally minimal:
 
-Example:
+- requests
+- polars
+- pycountry
 
-from imf_fx.client import fetch_country_usd_series
+This keeps the package lightweight and suitable for integration into larger systems.
 
-raw_df = fetch_country_usd_series(
-    country_iso3="USA",
-    start="2010-M01",
-    end="2024-M12"
-)
+---
 
-print(raw_df.head())
-Performance Notes
+## Public API
 
-Series are fetched sequentially (stable and polite to IMF servers)
+Stable public interface:
 
-Data is processed using Polars (fast and memory-efficient)
+```Python
+from imf_fx import monthly_usd_only
 
-Suitable for pulling full historical data (1957 → present)
+```
 
-Caching
+---
 
-Currency mappings from CLDR are cached locally at:
+## License
 
-./data/cache/
-
-Override the cache location with:
-
-export IMF_FX_CACHE_DIR="/custom/path"
-Limitations
-
-Focused on monthly USD-only exchange rates
-
-Not intended as a full SDMX framework
-
-Sequential fetching (no parallelism by default)
+MIT License
