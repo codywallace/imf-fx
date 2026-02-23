@@ -1,8 +1,11 @@
 # imf-fx
 
-High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a monthly USD dataset helper.
+High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a production-ready monthly USD dataset helper.
 
-`imf-fx` provides reliable access to the IMF’s official exchange rate data using the SDMX 3.0 API contract. It is designed for financial modeling workflows, development finance systems, and public information management platforms that require consistent historical currency normalization.
+![CI](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/imf-fx)
+![Python](https://img.shields.io/pypi/pyversions/imf-fx)
+![License](https://img.shields.io/pypi/l/imf-fx)
 
 ---
 
@@ -19,7 +22,7 @@ The International Monetary Fund (IMF) publishes official exchange rate data thro
 - ISO2 and ISO3 country compatibility
 - Log exchange rate output for modeling workflows
 
-The package relies solely on the official IMF API contract, ensuring stability and alignment with IMF data structures. Some earlier community approaches relied on scraping spreadsheets or HTML representations of data. By using the official SDMX 3.0 endpoint directly, this package provides a more robust and production-ready integration path.
+Unlike spreadsheet scraping or HTML extraction approaches, `imf-fx` uses the official IMF SDMX 3.0 API contract directly. This ensures structural stability and alignment with IMF data standards.
 
 ---
 
@@ -36,14 +39,14 @@ Exchange rate normalization is essential for:
 - Cross-country budget comparisons
 - Financial modeling pipelines
 
-Public finance and development systems frequently ingest transactions denominated in multiple currencies. Consistent historical FX normalization ensures:
+Public finance systems frequently ingest transactions denominated in multiple currencies. Consistent historical FX normalization ensures:
 
 - Accurate aggregation across currencies
 - Time-consistent financial comparisons
 - Reproducible modeling
 - Transparent auditability of conversions
 
-`imf-fx` provides a fast and structured way to obtain authoritative exchange rate data for these workflows.
+`imf-fx` provides a fast, structured, and authoritative way to obtain exchange rate data for these workflows.
 
 ---
 
