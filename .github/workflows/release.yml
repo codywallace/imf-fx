@@ -11,7 +11,7 @@ jobs:
         name: Build and Publish
         runs-on: ubuntu-latest
 
-        # This MUST match your GitHub Environment name that holds the secret.
+        # MUST match your GitHub Environment name holding PYPI_API_TOKEN
         environment: pypi
 
         strategy:
@@ -54,13 +54,14 @@ jobs:
                   if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
                     echo "PYPI_API_TOKEN secret is not available."
                     echo "Because this is an ENVIRONMENT secret, confirm:"
-                    echo "1) The job has environment: <ENV_NAME> matching your GitHub Environment."
+                    echo "1) The job has environment: pypi matching your GitHub Environment."
                     echo "2) The secret name is exactly PYPI_API_TOKEN in that Environment."
                     echo "3) Any required reviewers for the Environment have approved this run."
                     exit 1
                   fi
 
             - name: Publish to PyPI (uv)
+              if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
               env:
                   UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
               run: uv publish
