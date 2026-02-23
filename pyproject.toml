@@ -54,9 +54,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/<YOUR_GITHUB_ORG>/imf-fx"
-Repository = "https://github.com/<YOUR_GITHUB_ORG>/imf-fx"
-Issues = "https://github.com/<YOUR_GITHUB_ORG>/imf-fx/issues"
+Homepage = "https://github.com/codywallace/imf-fx.git"
+Repository = "https://github.com/codywallace/imf-fx.git"
+Issues = "https://github.com/codywallace/imf-fx/issues"
 
 # --- Setuptools: src/ layout ---
 [tool.setuptools]
