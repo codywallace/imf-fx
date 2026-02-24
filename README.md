@@ -3,7 +3,7 @@
 [![CI](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml)
 ![PyPI](https://img.shields.io/pypi/v/imf-fx)
 ![Python versions](https://img.shields.io/pypi/pyversions/imf-fx?logo=python&logoColor=white)
-![License](https://img.shields.io/github/license/codywallace/imf-fx)
+![License](https://img.shields.io/pypi/l/imf-fx?cacheSeconds=300)
 
 
 ---
