@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/codywallace/imf-fx/actions/workflows/ci.yml)
 ![PyPI](https://img.shields.io/pypi/v/imf-fx)
-![Python](https://img.shields.io/pypi/pyversions/imf-fx)
-[License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE)
+![Python versions](https://img.shields.io/pypi/pyversions/imf-fx)
+![License](https://img.shields.io/pypi/l/imf-fx)
 
 
 ---
