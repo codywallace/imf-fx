@@ -37,3 +37,11 @@ def codelist_to_df(struct: dict[str, Any], cl_id: str) -> pl.DataFrame:
             )
 
     raise StructureNotFound(f"Missing codelist: {cl_id}")
+
+
+def er_indicator_codelist(struct: dict[str, Any]) -> pl.DataFrame:
+    return codelist_to_df(struct, "CL_ER_INDICATOR_PUB")
+
+
+def er_country_codelist(struct: dict[str, Any]) -> pl.DataFrame:
+    return codelist_to_df(struct, "CL_ER_COUNTRY_PUB")

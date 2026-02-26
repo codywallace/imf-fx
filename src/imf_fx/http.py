@@ -44,8 +44,17 @@ def _get_session() -> requests.Session:
     return s
 
 
-def get_json_session(url: str, params: dict | None = None, timeout: int = 90) -> dict[str, Any]:
+def get_json_session(
+    url: str,
+    params: dict | None = None,
+    timeout: int = 90,
+    *,
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
     sess = _get_session()
-    r = sess.get(url, params=params, headers=imf_headers(), timeout=timeout)
+    h = imf_headers()
+    if headers:
+        h.update(headers)
+    r = sess.get(url, params=params, headers=h, timeout=timeout)
     r.raise_for_status()
     return r.json()

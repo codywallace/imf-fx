@@ -8,8 +8,8 @@
 
 ---
 
+High-performance Python client for IMF SDMX 3.0 exchange-rate data, with consistent monthly, quarterly, and annual support for USD, EUR, and SDR (XDR).
 
-High-performance Python client for IMF SDMX 3.0 exchange-rate data, with a production-ready monthly USD dataset helper.
 
 ---
 
@@ -19,14 +19,16 @@ The International Monetary Fund (IMF) publishes official exchange rate data thro
 
 `imf-fx` provides:
 
-- Direct integration with the official SDMX 3.0 exchange-rate endpoint
-- Batched country requests for efficient network usage
-- Fast parsing using Polars
-- Client-side time-window enforcement
-- ISO2 and ISO3 country compatibility
-- Log exchange rate output for modeling workflows
+- Direct integration with the official IMF SDMX 3.0 Exchange Rate (ER) dataflow  
+- Batched and parallel country requests for efficient network usage  
+- Fast parsing using Polars  
+- Client-side time-window enforcement  
+- Consistent normalized outputs across monthly, quarterly, and annual data  
+- Support for USD, EUR, and SDR (XDR) exchange series  
+- Optional metadata reporting  
+- No spreadsheet scraping — official API only  
 
-Unlike spreadsheet scraping or HTML extraction approaches, `imf-fx` uses the official IMF SDMX 3.0 API contract directly. This ensures structural stability and alignment with IMF data standards.
+Unlike HTML scraping approaches, `imf-fx` uses the IMF’s structured SDMX 3.0 API contract directly. This ensures structural stability and alignment with IMF statistical standards.
 
 ---
 
