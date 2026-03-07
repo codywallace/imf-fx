@@ -76,9 +76,11 @@ venv.bak/
 *.log
 
 # ==========================
-# Jupyter
+# Jupyter notebooks
 # ==========================
 .ipynb_checkpoints/
+notebooks/
+*.ipynb
 
 # ==========================
 # Rust (future compatibility)
@@ -95,3 +97,8 @@ maturin.log
 # PyPI / Twine
 # ==========================
 .pypirc
+
+# ==========================
+# Local Cache
+# ==========================
+data/cache/

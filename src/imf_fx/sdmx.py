@@ -34,8 +34,11 @@ def sdmx3_to_tidy(
       - OBS_VALUE
 
     Optional:
-      min_period / max_period filter observations by TIME_PERIOD lexicographically.
-      Works for IMF monthly formats like 'YYYY-M01'.
+      min_period / max_period filter TIME_PERIOD lexicographically.
+      Works for IMF monthly formats like:
+        - Monthly:   YYYY-MMM  (e.g. 2020-M01)
+        - Quarterly: YYYY-Q#   (e.g. 2020-Q1)
+        - Annual:    YYYY      (e.g. 2020)
     """
     try:
         data = j["data"]
