@@ -262,7 +262,11 @@ def exchange_rates(
     return (df_out, meta) if return_meta else df_out
 
 
-# Consistent wrappers (A/Q/M averages)
+"""
+High-level exchange rate API wrappers for IMF FX data.
+
+Provides consistent monthly, quarterly, and annual exchange-rate helpers.
+"""
 
 
 def monthly_usd_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):

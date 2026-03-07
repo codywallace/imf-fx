@@ -1,67 +1,65 @@
 name: release
 
 on:
-    push:
-        tags:
-            - "v*"
-    workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 jobs:
-    release:
-        name: Build and Publish
-        runs-on: ubuntu-latest
+  release:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    environment: pypi
 
-        # MUST match your GitHub Environment name holding PYPI_API_TOKEN
-        environment: pypi
+    strategy:
+      matrix:
+        python-version: ["3.13"]
 
-        strategy:
-            matrix:
-                python-version: ["3.13"]
+    permissions:
+      contents: read
 
-        permissions:
-            contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+      - name: Set up uv (and Python)
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
 
-            - name: Set up uv (and Python)
-              uses: astral-sh/setup-uv@v6
-              with:
-                  python-version: ${{ matrix.python-version }}
+      - name: Sync dependencies (runtime + dev extra)
+        run: uv sync --extra dev
 
-            - name: Sync dependencies (runtime + dev extra)
-              run: uv sync --extra dev
+      - name: Lint (ruff)
+        run: uv run ruff check .
 
-            - name: Lint (ruff)
-              run: uv run ruff check .
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
 
-            - name: Format check (ruff)
-              run: uv run ruff format --check .
+      - name: Run tests
+        run: uv run pytest -q
 
-            - name: Run tests
-              run: uv run pytest -q
+      - name: Build sdist and wheel (uv)
+        run: uv build --no-sources
 
-            - name: Build sdist and wheel (uv)
-              run: uv build --no-sources
+      - name: Show dist/
+        run: ls -l dist
 
-            - name: Show dist/
-              run: ls -l dist
+      - name: Ensure PYPI_API_TOKEN is available
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "PYPI_API_TOKEN secret is not available."
+            echo "Because this is an ENVIRONMENT secret, confirm:"
+            echo "1) The job has environment: pypi matching your GitHub Environment."
+            echo "2) The secret name is exactly PYPI_API_TOKEN in that Environment."
+            echo "3) Any required reviewers for the Environment have approved this run."
+            exit 1
+          fi
 
-            - name: Ensure PYPI_API_TOKEN is available
-              shell: bash
-              run: |
-                  if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
-                    echo "PYPI_API_TOKEN secret is not available."
-                    echo "Because this is an ENVIRONMENT secret, confirm:"
-                    echo "1) The job has environment: pypi matching your GitHub Environment."
-                    echo "2) The secret name is exactly PYPI_API_TOKEN in that Environment."
-                    echo "3) Any required reviewers for the Environment have approved this run."
-                    exit 1
-                  fi
-
-            - name: Publish to PyPI (uv)
-              if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-              env:
-                  UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-              run: uv publish
+      - name: Publish to PyPI (uv)
+        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch' }}
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
