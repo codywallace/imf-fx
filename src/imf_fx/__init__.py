@@ -1,3 +1,4 @@
+from .client import fetch_countries_usd_series
 from .fx import (
     annual_eur_avg,
     annual_usd_avg,
@@ -13,6 +14,7 @@ from .fx import (
 )
 
 __all__ = [
+    "fetch_countries_usd_series",
     "exchange_rates",
     "monthly_usd_only",
     "monthly_usd_avg",

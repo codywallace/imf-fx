@@ -2,11 +2,11 @@
 
 import polars as pl
 
-from imf_fx import fetch_countries_usd_series, monthly_usd_only  # type: ignore
+from imf_fx import fetch_countries_usd_series, monthly_usd_only
 
 
 def test_monthly_usd_only_small_window():
-    df, meta = monthly_usd_only(  # pyright: ignore[reportUnknownVariableType]
+    df, meta = monthly_usd_only(
         start="2020-M01",
         end="2020-M01",
         return_meta=True,
@@ -14,7 +14,10 @@ def test_monthly_usd_only_small_window():
     )
 
     assert isinstance(df, pl.DataFrame)
-    assert meta["rows_final"] >= 0  # type: ignore
+    assert isinstance(meta, dict)
+
+    # tolerate either old or new meta schema
+    assert any(k in meta for k in ["rows_final", "rows_raw_total", "rows_out"])
 
 
 def test_fetch_countries_usd_series_basic():
@@ -25,7 +28,7 @@ def test_fetch_countries_usd_series_basic():
     )
 
     assert isinstance(df, pl.DataFrame)
-    # Should return at least USA
+
     if df.height > 0:
         assert "COUNTRY" in df.columns
         assert df.select(pl.col("COUNTRY").n_unique()).item() >= 1

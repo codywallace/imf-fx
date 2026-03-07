@@ -50,7 +50,7 @@ def _write_cached_structure(cache_path: Path, struct: dict[str, Any]) -> None:
 
 
 def exchange_rates(
-    ref_areas: str | Sequence[str],
+    ref_areas: str | Sequence[str] | None = None,
     *,
     base: str,
     quote: str,
@@ -72,11 +72,15 @@ def exchange_rates(
     debug: bool = False,
 ) -> pl.DataFrame | tuple[pl.DataFrame, dict]:
     """
-    Fetch ER series and return tidy Polars DataFrame (raw IMF dimensions + TIME_PERIOD + OBS_VALUE).
+    Fetch ER series and return a tidy Polars DataFrame.
 
-    indicator is formed as '{base}_{quote}' (e.g., XDC_USD, USD_XDC, XDC_EUR, EUR_XDC, XDC_XDR, XDR_XDC).
+    indicator is formed as '{base}_{quote}' (e.g. XDC_USD, USD_XDC, XDC_EUR,
+    EUR_XDC, XDC_XDR, XDR_XDC).
 
     If normalize=True, returns a standardized schema via transform.normalize_fx_rates().
+
+    If ref_areas is None, all valid IMF ER country codes from CL_ER_COUNTRY_PUB
+    are requested.
     """
     tr_map = {"average": "PA_RT", "eop": "EOP_RT"}
     freq_map = {"annual": "A", "monthly": "M", "quarterly": "Q"}
@@ -93,7 +97,7 @@ def exchange_rates(
     quote = str(quote).strip().upper()
     indicator = f"{base}_{quote}"
 
-    # ---- structure (cached) ----
+    # structure (cached)
     struct: dict[str, Any] | None = None
     cache_hit = False
     if cache_structure:
@@ -120,14 +124,19 @@ def exchange_rates(
             f"Examples: {', '.join(examples) if examples else 'see CL_ER_INDICATOR_PUB'}"
         )
 
-    # Optional area labels for joins later
-    area_lu = None
-    if include_country_labels:
-        # CL_ER_COUNTRY_PUB is what you found as "COUNTRY/AREA-like"
-        area_lu = codelist_to_df(struct, "CL_ER_COUNTRY_PUB")
+    area_lu = codelist_to_df(struct, "CL_ER_COUNTRY_PUB")
 
-    # ---- normalize ref_areas ----
-    if isinstance(ref_areas, str):
+    # Optional area labels for joins later
+    label_lu = area_lu if include_country_labels else None
+
+    # normalize ref_areas
+    if ref_areas is None:
+        refs = [
+            c.strip().upper()
+            for c in area_lu["code"].to_list()
+            if isinstance(c, str) and _is_iso3_like(c.strip().upper())
+        ]
+    elif isinstance(ref_areas, str):
         refs = [ref_areas]
     else:
         refs = list(ref_areas)
@@ -149,10 +158,11 @@ def exchange_rates(
             "missing_ref_areas": [],
             "structure_cache_hit": cache_hit,
             "rows_raw_total": 0,
+            "rows_out": 0,
         }
         return (empty, meta) if return_meta else empty
 
-    # ---- batching + resilience ----
+    # batching + resilience
     batches = _chunked(refs, batch_size)
     dfs: list[pl.DataFrame] = []
     errors = 0
@@ -211,6 +221,7 @@ def exchange_rates(
             "errors": errors,
             "structure_cache_hit": cache_hit,
             "rows_raw_total": 0,
+            "rows_out": 0,
         }
         return (empty, meta) if return_meta else empty
 
@@ -222,12 +233,12 @@ def exchange_rates(
         df_out = normalize_fx_rates(
             df_raw,
             indicator=indicator,
-            area_lu=area_lu,
+            area_lu=label_lu,
             include_country_name=include_country_labels,
         )
 
     # meta
-    returned = []
+    returned: list[str] = []
     for col in ["COUNTRY", "REF_AREA"]:
         if col in df_raw.columns:
             returned = sorted(df_raw.select(pl.col(col).unique()).to_series().to_list())
@@ -251,20 +262,23 @@ def exchange_rates(
     return (df_out, meta) if return_meta else df_out
 
 
-# ----------------------------
 # Consistent wrappers (A/Q/M averages)
-# ----------------------------
 
 
-def monthly_usd_avg(ref_areas: str | Sequence[str], **kwargs):
+def monthly_usd_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="USD", frequency="monthly", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="USD",
+        frequency="monthly",
+        transformation="average",
+        **kwargs,
     )
 
 
-def quarterly_usd_avg(ref_areas: str | Sequence[str], **kwargs):
+def quarterly_usd_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas,
+        ref_areas=ref_areas,
         base="XDC",
         quote="USD",
         frequency="quarterly",
@@ -273,21 +287,31 @@ def quarterly_usd_avg(ref_areas: str | Sequence[str], **kwargs):
     )
 
 
-def annual_usd_avg(ref_areas: str | Sequence[str], **kwargs):
+def annual_usd_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="USD", frequency="annual", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="USD",
+        frequency="annual",
+        transformation="average",
+        **kwargs,
     )
 
 
-def monthly_eur_avg(ref_areas: str | Sequence[str], **kwargs):
+def monthly_eur_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="EUR", frequency="monthly", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="EUR",
+        frequency="monthly",
+        transformation="average",
+        **kwargs,
     )
 
 
-def quarterly_eur_avg(ref_areas: str | Sequence[str], **kwargs):
+def quarterly_eur_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas,
+        ref_areas=ref_areas,
         base="XDC",
         quote="EUR",
         frequency="quarterly",
@@ -296,21 +320,31 @@ def quarterly_eur_avg(ref_areas: str | Sequence[str], **kwargs):
     )
 
 
-def annual_eur_avg(ref_areas: str | Sequence[str], **kwargs):
+def annual_eur_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="EUR", frequency="annual", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="EUR",
+        frequency="annual",
+        transformation="average",
+        **kwargs,
     )
 
 
-def monthly_xdr_avg(ref_areas: str | Sequence[str], **kwargs):
+def monthly_xdr_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="XDR", frequency="monthly", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="XDR",
+        frequency="monthly",
+        transformation="average",
+        **kwargs,
     )
 
 
-def quarterly_xdr_avg(ref_areas: str | Sequence[str], **kwargs):
+def quarterly_xdr_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas,
+        ref_areas=ref_areas,
         base="XDC",
         quote="XDR",
         frequency="quarterly",
@@ -319,13 +353,16 @@ def quarterly_xdr_avg(ref_areas: str | Sequence[str], **kwargs):
     )
 
 
-def annual_xdr_avg(ref_areas: str | Sequence[str], **kwargs):
+def annual_xdr_avg(ref_areas: str | Sequence[str] | None = None, **kwargs):
     return exchange_rates(
-        ref_areas, base="XDC", quote="XDR", frequency="annual", transformation="average", **kwargs
+        ref_areas=ref_areas,
+        base="XDC",
+        quote="XDR",
+        frequency="annual",
+        transformation="average",
+        **kwargs,
     )
 
 
-# Back-compat name you want:
-def monthly_usd_only(ref_areas: str | Sequence[str], **kwargs):
-    # wrapper only; no special fetch logic
-    return monthly_usd_avg(ref_areas, **kwargs)
+def monthly_usd_only(ref_areas: str | Sequence[str] | None = None, **kwargs):
+    return monthly_usd_avg(ref_areas=ref_areas, **kwargs)
