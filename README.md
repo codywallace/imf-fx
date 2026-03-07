@@ -10,7 +10,6 @@
 
 High-performance Python client for IMF SDMX 3.0 exchange-rate data, with consistent monthly, quarterly, and annual support for USD, EUR, and SDR (XDR).
 
-
 ---
 
 ## Overview
@@ -19,16 +18,16 @@ The International Monetary Fund (IMF) publishes official exchange rate data thro
 
 `imf-fx` provides:
 
-- Direct integration with the official IMF SDMX 3.0 Exchange Rate (ER) dataflow  
-- Batched and parallel country requests for efficient network usage  
-- Fast parsing using Polars  
-- Client-side time-window enforcement  
-- Consistent normalized outputs across monthly, quarterly, and annual data  
-- Support for USD, EUR, and SDR (XDR) exchange series  
-- Optional metadata reporting  
-- No spreadsheet scraping — official API only  
+- Direct integration with the official IMF SDMX 3.0 Exchange Rate (ER) dataflow
+- Batched and parallel country requests for efficient network usage
+- Fast parsing using Polars
+- Client-side time-window enforcement
+- Consistent normalized outputs across monthly, quarterly, and annual data
+- Support for USD, EUR, and SDR (XDR) exchange series
+- Optional metadata reporting
+- Official API access only, with no spreadsheet or HTML scraping
 
-Unlike HTML scraping approaches, `imf-fx` uses the IMF’s structured SDMX 3.0 API contract directly. This ensures structural stability and alignment with IMF statistical standards.
+Unlike scraping-based approaches, `imf-fx` uses the IMF’s structured SDMX 3.0 API contract directly. This provides a stable and reproducible way to work with exchange rate data in analytics, modeling, and public finance workflows.
 
 ---
 
@@ -45,7 +44,7 @@ Exchange rate normalization is essential for:
 - Cross-country budget comparisons
 - Financial modeling pipelines
 
-Public finance systems frequently ingest transactions denominated in multiple currencies. Consistent historical FX normalization ensures:
+Public finance and development data systems frequently ingest transactions denominated in multiple currencies. Consistent historical FX normalization helps ensure:
 
 - Accurate aggregation across currencies
 - Time-consistent financial comparisons
@@ -69,141 +68,324 @@ Python 3.11 or newer is required.
 
 ## Quick Start
 
-Download the full monthly USD dataset
+### Monthly USD exchange rates (Domestic Currency per USD)
 
 ```Python
-from imf_fx import monthly_usd_only
+from imf_fx import monthly_usd_avg
 
-df = monthly_usd_only()
+df = monthly_usd_avg(normalize=True)
 print(df.head())
 
 ```
+
+This is the most common entry point for USD exchange rates.
+
 ---
 
-## Bulk exports
-
-The dataset can be written directly to CSV, or export to Parquet for use in other systems
+### Monthly EUR exchange rates
 
 ```Python
-from imf_fx import monthly_usd_only
+from imf_fx import monthly_eur_avg
 
-df = monthly_usd_only()
-
-df.write_csv("imf_monthly_usd.csv")
-df.write_parquet("imf_monthly_usd.parquet")
+df = monthly_eur_avg(normalize=True)
 
 ```
 
 ---
 
-Download a specific time-window
+### Monthly SDR (XDR) exchange rates
 
 ```Python
-from imf_fx import monthly_usd_only
+from imf_fx import monthly_xdr_avg
 
-df = monthly_usd_only(
+df = monthly_xdr_avg(normalize=True)
+
+```
+
+---
+
+### Quarterly or Annual averages
+
+```Python
+from imf_fx import quarterly_usd_avg, annual_eur_avg
+
+df_q = quarterly_usd_avg(normalize=True)
+df_a = annual_eur_avg(normalize=True)
+
+```
+
+---
+
+Date semantics:
+
+| Frequency | Date returned |
+| --------- | ------------- |
+| Monthly   | Month end     |
+| Quarterly | Quarter end   |
+| Annual    | December 31   |
+
+---
+
+## Core API
+
+The core primitive of the library is:
+
+```Python
+from imf_fx import exchange_rates
+
+```
+
+All wrapper functions call this underlying API
+
+Example:
+
+```Python
+from imf_fx import exchange_rates
+
+df, meta = exchange_rates(
+    ref_areas=["USA", "JPN", "BRA"],
+    base="XDC",
+    quote="USD",
+    frequency="monthly",
+    transformation="average",
     start="2020-M01",
-    end="2020-M12"
+    end="2020-M12",
+    normalize=True,
+    return_meta=True,
 )
 
+print(df.head())
+print(meta)
 ```
 
 ---
 
-Retreive dataset with metadata
+## Indicator Semantics
+
+The IMF ER dataset uses indicators structured as:
+
+BASE_QUOTE
+
+Examples:
+
+| Indicator | Meaning                   |
+| --------- | ------------------------- |
+| `XDC_USD` | Domestic currency per USD |
+| `USD_XDC` | USD per domestic currency |
+| `XDC_EUR` | Domestic currency per EUR |
+| `EUR_XDC` | EUR per domestic currency |
+| `XDC_XDR` | Domestic currency per SDR |
+| `XDR_XDC` | SDR per domestic currency |
+
+Because the IMF provides both directions for key pairs, no recipocral calculations are required.
+
+---
+
+## Supported Frequencies
+
+| Frequency | Code        |
+| --------- | ----------- |
+| Monthly   | `monthly`   |
+| Quarterly | `quarterly` |
+| Annual    | `annual`    |
+
+---
+
+## Supported Transformations
+
+| Transformation | IMF Code |
+| -------------- | -------- |
+| Average        | `PA_RT`  |
+| End-of-period  | `EOP_RT` |
+
+Example:
 
 ```Python
-from imf_fx import monthly_usd_only
-
-df, meta = monthly_usd_only(return_meta=True)
-
-print(meta)
-
+exchange_rates(
+    ref_areas=["GBR"],
+    base="XDC",
+    quote="EUR",
+    frequency="quarterly",
+    transformation="eop",
+)
 ```
 
 ---
 
-Example metadata output:
+## Time Windows
+
+Time windows follow IMF period formatting.
+
+| Frequency | Format     |
+| --------- | ---------- |
+| Monthly   | `YYYY-MMM` |
+| Quarterly | `YYYY-Q#`  |
+| Annual    | `YYYY`     |
+
+Example:
+
+```Python
+from imf_fx import monthly_usd_avg
+
+df = monthly_usd_avg(
+    start="2020-M01",
+    end="2020-M06",
+    normalize=True,
+)
+```
+
+---
+
+## Normalized Output Schema
+
+When normalize=True, output columns are standardized.
+
+| Column         | Description             |
+| -------------- | ----------------------- |
+| `date`         | Period-end date         |
+| `period`       | Original IMF period     |
+| `country_iso3` | ISO-3 country code      |
+| `country_iso2` | ISO-2 country code      |
+| `country_name` | Country name (optional) |
+| `base`         | Base currency           |
+| `quote`        | Quote currency          |
+| `rate`         | Exchange rate           |
+| `source`       | Data source (`IMF`)     |
+
+This schema is identical across:
+
+- monthly
+- quarterly
+- annual
+- USD
+- EUR
+- SDR
+
+---
+
+### Metadata
+
+Set return_meta=True to retrieve diagnostics.
+
+```Python
+from imf_fx import monthly_usd_avg
+
+df, meta = monthly_usd_avg(
+    start="2020-M01",
+    end="2020-M03",
+    normalize=True,
+    return_meta=True,
+)
+
+print(meta)
+```
+
+Example:
+
+```Python
+from imf_fx import monthly_usd_avg
+
+df, meta = monthly_usd_avg(
+    start="2020-M01",
+    end="2020-M03",
+    normalize=True,
+    return_meta=True,
+)
+
+print(meta)
+```
+
+Example:
 
 ```Python
 {
-  "countries_requested": 260,
-  "countries_with_data": 222,
-  "rows_final": 154333,
-  "min_period": "1924-M06",
-  "max_period": "2026-M01",
-  "elapsed_s": 2.7
+  "indicator": "XDC_USD",
+  "frequency": "M",
+  "requested_ref_areas": ["BRA","GBR","JPN"],
+  "returned_ref_areas": ["BRA","GBR","JPN"],
+  "missing_ref_areas": [],
+  "rows_raw_total": 9,
+  "rows_out": 9
 }
-
 ```
 
+---
 
-## Output Schema
+Bulk Export
 
-The normalized dataset includes
+```
+from imf_fx import monthly_usd_avg
 
-| Column                 | Description                   |
-| ---------------------- | ----------------------------- |
-| `country_iso3`         | ISO 3-letter country code     |
-| `country_iso2`         | ISO 2-letter country code     |
-| `country_name`         | Country name                  |
-| `date`                 | End-of-month date             |
-| `ym`                   | Year-month string (`YYYY-MM`) |
-| `usd_per_domestic`     | Domestic currency per 1 USD   |
-| `log_usd_per_domestic` | Natural log of exchange rate  |
+df = monthly_usd_avg(normalize=True)
 
+df.write_csv("imf_monthly_usd.csv")
+df.write_parquet("imf_monthly_usd.parquet")
+```
 
-Both ISO2 and ISO3 codes are included to simplify integration with:
-
-- IATI datasets
-- OECD CRS datasets
-- National aid platforms
-- Government finance systems
-- Custom financial tools and pipelines
-
-Users do not need to perform separate country code mapping.
+Parquet would be recommended for analytics pipelines.
 
 ---
 
 ## Performance
 
-The dataset helper uses:
+imf-fx uses:
 
-- Batched SDMX country keys (reducing HTTP calls)
-- Parallel batch fetching
-- Polars-based parsing for speed and memory efficiency
-- Columnar construction rather than row-by-row dictionary assembly
+- Batched SDMX country keys
+- Parallel requests
+- Polars-based parsing
+- Columnar dataframe construction
+- Structure caching
 
 Typical performance:
 
-- Full historical dataset (1924–present)
-- 150k rows
-- ~2–3 seconds on a standard machine
-
-Time-windowed requests are significantly faster.
+| Dataset                                      | Runtime      |
+| -------------------------------------------- | ------------ |
+| Full historical monthly dataset (~150k rows) | ~2–3 seconds |
+| Time-windowed requests                       | faster       |
 
 ---
 
-## Minimal Dependencies
+## Stable Public Interface
 
-External dependencies are intentionally minimal:
+```Python
+from imf_fx import (
+    exchange_rates,
+    fetch_countries_usd_series,
+    monthly_usd_avg,
+    quarterly_usd_avg,
+    annual_usd_avg,
+    monthly_eur_avg,
+    quarterly_eur_avg,
+    annual_eur_avg,
+    monthly_xdr_avg,
+    quarterly_xdr_avg,
+    annual_xdr_avg,
+)
+```
+
+---
+
+## Backward Compatibility
+
+monthly_usd_only() is retained for compatibility with earlier versions of the package.
+
+New code should prefer the consistent naming convention:
+
+- monthly_usd_avg
+- quarterly_usd_avg
+- annual_usd_avg
+
+---
+
+## Dependencies
+
+Minimal dependencies on external libraries.
 
 - requests
 - polars
 - pycountry
 
 This keeps the package lightweight and suitable for integration into larger systems.
-
----
-
-## Public API
-
-Stable public interface:
-
-```Python
-from imf_fx import monthly_usd_only
-
-```
 
 ---
 
@@ -215,7 +397,7 @@ MIT License
 
 ## IMF Data License
 
-The source of the data is extracted from the IMF's Exchange Data.
+The source of the data is extracted from the IMF's Exchange Rate database.
 
 Below is an excerpt on the IMF Copyright and Usage page, effective 11 October, 2024; accessed 2026-02-23:
 
