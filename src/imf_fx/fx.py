@@ -233,6 +233,7 @@ def exchange_rates(
         df_out = normalize_fx_rates(
             df_raw,
             indicator=indicator,
+            frequency=freq_code,
             area_lu=label_lu,
             include_country_name=include_country_labels,
         )

@@ -66,6 +66,18 @@ Python 3.11 or newer is required.
 
 ---
 
+### Optional: Using uv (recommended if you want to bypass installing Python)
+
+```bash
+uv init my-project
+cd my-project
+uv add imf-fx
+
+uv run python
+```
+
+---
+
 ## Quick Start
 
 ### Monthly USD exchange rates (Domestic Currency per USD)
@@ -207,6 +219,7 @@ exchange_rates(
     quote="EUR",
     frequency="quarterly",
     transformation="eop",
+    normalize=True,
 )
 ```
 
@@ -240,17 +253,18 @@ df = monthly_usd_avg(
 
 When normalize=True, output columns are standardized.
 
-| Column         | Description             |
-| -------------- | ----------------------- |
-| `date`         | Period-end date         |
-| `period`       | Original IMF period     |
-| `country_iso3` | ISO-3 country code      |
-| `country_iso2` | ISO-2 country code      |
-| `country_name` | Country name (optional) |
-| `base`         | Base currency           |
-| `quote`        | Quote currency          |
-| `rate`         | Exchange rate           |
-| `source`       | Data source (`IMF`)     |
+| Column         | Description               |
+| -------------- | -----------------------   |
+| `date`         | Period-end date           |
+| `period`       | Original IMF period       |
+| `frequency`    | IMF frequency code (M,Q,A)|
+| `country_iso3` | ISO-3 country code        |
+| `country_iso2` | ISO-2 country code        |
+| `country_name` | Country name (optional)   |
+| `base`         | Base currency             |
+| `quote`        | Quote currency            |
+| `rate`         | Exchange rate             |
+| `source`       | Data source (`IMF`)       |
 
 This schema is identical across:
 
@@ -313,7 +327,7 @@ Example:
 
 Bulk Export
 
-```
+```Python
 from imf_fx import monthly_usd_avg
 
 df = monthly_usd_avg(normalize=True)
