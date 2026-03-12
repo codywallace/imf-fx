@@ -204,6 +204,7 @@ def normalize_fx_rates(
     df: pl.DataFrame,
     *,
     indicator: str,
+    frequency: str,
     area_lu: pl.DataFrame | None = None,
     include_country_name: bool = False,
     include_period: bool = True,
@@ -215,6 +216,7 @@ def normalize_fx_rates(
     Output columns:
       date
       period (optional; original TIME_PERIOD)
+      frequency
       country_iso3
       country_iso2
       country_name (optional)
@@ -250,6 +252,7 @@ def normalize_fx_rates(
             [
                 pl.lit(base).alias("base"),
                 pl.lit(quote).alias("quote"),
+                pl.lit(frequency).alias("frequency"),
                 pl.col("OBS_VALUE").cast(pl.Float64, strict=False).alias("rate"),
                 pl.lit("IMF").alias("source"),
             ]
@@ -271,6 +274,7 @@ def normalize_fx_rates(
     cols = [pl.col("DATE").alias("date")]
     if include_period:
         cols.append("period")
+    cols.append("frequency")
     cols += ["country_iso3", "country_iso2"]
     if include_country_name and "country_name" in out.columns:
         cols.append("country_name")
@@ -279,7 +283,7 @@ def normalize_fx_rates(
     out = out.select(cols).sort(["country_iso3", "date"])
 
     if categorical_dims:
-        cat_cols = ["country_iso3", "country_iso2", "base", "quote", "source"]
+        cat_cols = ["frequency", "country_iso3", "country_iso2", "base", "quote", "source"]
         if include_period:
             cat_cols.append("period")
         out = out.with_columns(
