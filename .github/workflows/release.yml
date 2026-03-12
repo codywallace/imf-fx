@@ -1,65 +1,49 @@
-name: release
+name: Release
 
 on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   release:
-    name: Build and Publish
+    name: Build and publish
     runs-on: ubuntu-latest
     environment: pypi
-
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up uv (and Python)
+      - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
-      - name: Sync dependencies (runtime + dev extra)
-        run: uv sync --extra dev
+      - name: Set up Python
+        run: uv python install 3.13
 
-      - name: Lint (ruff)
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Lint
         run: uv run ruff check .
 
-      - name: Format check (ruff)
+      - name: Format check
         run: uv run ruff format --check .
 
       - name: Run tests
         run: uv run pytest -q
 
-      - name: Build sdist and wheel (uv)
+      - name: Build distributions
         run: uv build --no-sources
 
-      - name: Show dist/
-        run: ls -l dist
+      - name: Check distributions
+        run: uv run twine check dist/*
 
-      - name: Ensure PYPI_API_TOKEN is available
-        shell: bash
-        run: |
-          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
-            echo "PYPI_API_TOKEN secret is not available."
-            echo "Because this is an ENVIRONMENT secret, confirm:"
-            echo "1) The job has environment: pypi matching your GitHub Environment."
-            echo "2) The secret name is exactly PYPI_API_TOKEN in that Environment."
-            echo "3) Any required reviewers for the Environment have approved this run."
-            exit 1
-          fi
-
-      - name: Publish to PyPI (uv)
-        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch' }}
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI
         run: uv publish

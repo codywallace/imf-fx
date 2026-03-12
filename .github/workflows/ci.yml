@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -19,24 +21,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up uv (and Python)
+      - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
-      - name: Sync dependencies (runtime + dev extra)
-        run: uv sync --extra dev
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
 
-      - name: Lint (ruff)
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Lint
         run: uv run ruff check . --output-format=github
 
-      - name: Format check (ruff)
+      - name: Format check
         run: uv run ruff format --check .
 
       - name: Run tests
         run: uv run pytest -q
 
-      - name: Build package (sanity)
-        run: |
-          uv run python -m build
-          uv run python -m twine check dist/*
+      - name: Build package
+        run: uv build
+
+      - name: Check distributions
+        run: uv run twine check dist/*
