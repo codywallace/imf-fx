@@ -50,7 +50,12 @@ dependencies = [
   "pycountry>=24.0.0",
 ]
 
-[project.optional-dependencies]
+[project.urls]
+Homepage = "https://github.com/codywallace/imf-fx"
+Repository = "https://github.com/codywallace/imf-fx"
+Issues = "https://github.com/codywallace/imf-fx/issues"
+
+[dependency-groups]
 dev = [
   "pytest>=8.0.0",
   "ruff>=0.8.4",
@@ -62,11 +67,6 @@ dev = [
   "ipykernel>=6.0.0",
   "bump-my-version>=1.1.1",
 ]
-
-[project.urls]
-Homepage = "https://github.com/codywallace/imf-fx"
-Repository = "https://github.com/codywallace/imf-fx"
-Issues = "https://github.com/codywallace/imf-fx/issues"
 
 # =============================
 # Setuptools configuration
@@ -111,13 +111,13 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-  "E",   # pycodestyle errors
-  "F",   # pyflakes
-  "I",   # isort
-  "UP",  # pyupgrade
+  "E",
+  "F",
+  "I",
+  "UP",
 ]
 ignore = [
-  "E501",  # line length handled by formatter
+  "E501",
 ]
 fixable = ["ALL"]
 
@@ -138,6 +138,10 @@ no_implicit_optional = true
 check_untyped_defs = true
 disallow_untyped_defs = false
 
+# =============================
+# Bump My Version
+# =============================
+
 [tool.bumpversion]
 current_version = "0.2.1"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
@@ -146,6 +150,7 @@ search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 commit = true
 tag = true
+tag_name = "v{new_version}"
 message = "chore: bump version to {new_version}"
 
 [[tool.bumpversion.files]]
