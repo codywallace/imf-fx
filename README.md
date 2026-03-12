@@ -4,6 +4,7 @@
 ![PyPI](https://img.shields.io/pypi/v/imf-fx)
 ![Python versions](https://img.shields.io/pypi/pyversions/imf-fx?logo=python&logoColor=white)
 ![License](https://img.shields.io/pypi/l/imf-fx?cacheSeconds=300)
+![uv compatible](https://img.shields.io/badge/uv-compatible-blue)
 
 
 ---
